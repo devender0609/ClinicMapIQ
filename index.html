@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ClinicMap IQ — Referral Growth Workspace</title>
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQpk89R4RJIw5cD7YSwba4hUDFiEvw=" crossorigin="" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand-pill brand-home-link" href="https://texasspineandscoliosis.com/" target="_blank" rel="noopener" aria-label="Open Texas Spine and Scoliosis clinic website" title="Open Texas Spine and Scoliosis clinic website">
+        <div class="brand-logo">✦</div>
+        <div>
+          <div class="brand-name">ClinicMap IQ</div>
+          <div class="brand-tagline">Referral growth workspace</div>
+        </div>
+      </a>
+      <div class="topbar-actions">
+        <button type="button" id="accountQuickBtn" class="source-pill account-pill">Sign in / Sync</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero-grid">
+        <div class="hero-card glass-card">
+          <p class="eyebrow">Clinic referral growth planning</p>
+          <h1>Find offices to contact. Track outreach. Grow referral relationships.</h1>
+          <p class="lead">Search a market, map possible referral offices, see similar clinics nearby, save targets, track follow-ups, export routes, and return each week with a clear action plan.</p>
+        </div>
+
+        <form class="search-card glass-card" id="searchForm">
+          <div class="search-row top-search-row">
+            <label class="field wide-field">
+              <span>Clinic address or market</span>
+              <div class="input-icon address-wrap"><i>⌕</i><input id="locationInput" value="Austin, TX" placeholder="Austin, TX or 1005 W 32nd St, Austin TX" autocomplete="off" aria-autocomplete="list" /><button id="voiceSearchBtn" class="voice-search-btn" type="button" aria-label="Use voice search" title="Speak a clinic address or market">🎙</button><div id="voiceSearchStatus" class="voice-search-status" hidden>Listening…</div><div id="addressSuggestBox" class="suggest-box" hidden></div></div>
+            </label>
+            <label class="field">
+              <span>Specialty</span>
+              <select id="specialtySelect">
+                <option value="spine">Spine / orthopedic</option>
+                <option value="pain">Pain management</option>
+                <option value="cardiology">Cardiology</option>
+                <option value="dermatology">Dermatology</option>
+                <option value="primary">Primary care</option>
+                <option value="dental">Dental</option>
+              </select>
+            </label>
+            <label class="field small-field">
+              <span>Radius</span>
+              <select id="radiusSelect">
+                <option value="5">5 mi</option>
+                <option value="8" selected>8 mi</option>
+                <option value="12">12 mi</option>
+                <option value="20">20 mi</option>
+                <option value="30">30 mi</option>
+                <option value="50">50 mi</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="search-row">
+            <label class="field grow-field">
+              <span>Growth goal</span>
+              <select id="growthGoalSelect">
+                <option value="general">General referral growth</option>
+                <option value="surgical">Surgical consults</option>
+                <option value="procedures">Injection / procedure referrals</option>
+                <option value="new_market">New market launch</option>
+                <option value="reactivation">Follow-up / reactivation</option>
+              </select>
+            </label>
+            <button id="searchBtn" class="primary-btn" type="submit">Build outreach map</button>
+          </div>
+
+          <div class="saved-search-row" id="savedSearchRow">
+            <label class="field saved-search-field"><span>Saved searches</span><select id="savedSearchSelect"><option value="">Recent saved markets</option></select></label>
+            <button id="runSavedSearchBtn" class="soft-btn saved-search-btn" type="button">Run saved</button>
+            <button id="saveSearchBtn" class="soft-btn saved-search-btn" type="button">Save current</button>
+            <button id="clearSavedSearchesBtn" class="soft-btn saved-search-btn subtle" type="button">Clear</button>
+            <div id="savedSearchChangeHint" class="saved-search-hint">Save a market to compare what changes after rerunning it.</div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="type-panel">
+            <div class="type-head">
+              <span>Office types to include</span>
+              <button type="button" id="resetRecommended" class="pill-btn">Reset recommended</button>
+            </div>
+            <div id="officeTypeGrid" class="type-grid">
+              <label><input type="checkbox" value="primary" checked /> Primary care</label>
+              <label><input type="checkbox" value="pt" checked /> Physical therapy</label>
+              <label><input type="checkbox" value="urgent" checked /> Urgent care</label>
+              <label><input type="checkbox" value="imaging" checked /> Imaging</label>
+              <label><input type="checkbox" value="chiro" checked /> Chiropractic</label>
+              <label><input type="checkbox" value="pain" checked /> Pain clinics</label>
+              <label><input type="checkbox" value="specialist" checked /> Specialty offices</label>
+              <label><input type="checkbox" value="hospital" /> Hospitals</label>
+            </div>
+            <p class="helper-text">Checked types appear as possible outreach offices. Similar clinics/competitors are shown separately in red when public data supports it.</p>
+          </div>
+
+          <details class="advanced-box">
+            <summary>Advanced search options</summary>
+            <div class="advanced-grid">
+              <label class="field"><span>Search mode</span><select id="searchMode"><option value="auto">Auto: balanced</option><option value="map_first">Map pins first</option><option value="contact_first">Contact records first</option><option value="comprehensive">Comprehensive public sweep</option></select></label>
+              <label class="switch-line"><input type="checkbox" id="googleToggle" checked /> Try Google Places when API key is available</label>
+            </div>
+            <p class="helper-text">Mapped results use the selected radius. NPI contact records are city/state based until an address can be mapped. Google Places requires a server-side API key.</p>
+          </details>
+        </form>
+      </section>
+
+      <div id="messageArea" class="message-area" aria-live="polite"></div>
+
+      <section class="map-workspace">
+        <div class="map-card glass-card">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Outreach map</p>
+              <h2>Mapped offices <span id="mapPinBadge" class="small-badge neutral">Search first</span></h2>
+            </div>
+            <div id="layerToggles" class="layer-toggles" hidden>
+              <button class="layer-btn active" type="button" data-layer="referral"><span class="blue-dot"></span>Referral</button>
+              <button class="layer-btn active" type="button" data-layer="similar"><span class="red-dot"></span>Similar</button>
+              <button class="layer-btn active" type="button" data-layer="existing"><span class="green-dot"></span>Existing</button>
+              <button class="layer-btn area-tool-btn" id="areaSelectBtn" type="button"><span class="gold-dot"></span>Mark area</button>
+              <button class="layer-btn area-tool-btn" id="areaClearBtn" type="button" hidden>Clear area</button>
+            </div>
+          </div>
+          <div id="map"></div>
+          <div id="areaAnalysis" class="area-analysis" hidden></div>
+          <div class="legend">
+            <span role="button" tabindex="0" data-layer="referral"><i class="blue-dot"></i>Possible referral office</span>
+            <span role="button" tabindex="0" data-layer="similar"><i class="red-dot"></i>Similar clinic / competitor</span>
+            <span role="button" tabindex="0" data-layer="existing"><i class="green-dot"></i>Existing referral source</span>
+            <span><i class="gold-dot"></i>Best area to review</span>
+            <span><i class="approx-dot"></i>Approximate public-address pin</span>
+          </div>
+        </div>
+
+        <aside class="status-card glass-card">
+          <div class="status-summary compact-status-summary">
+            <p class="eyebrow">Search status</p>
+            <h2 id="summaryTitle" class="sr-status">Ready</h2>
+            <p id="summaryText" class="sr-status-text"></p>
+          </div>
+          <div class="metric-grid">
+            <div class="metric teal"><small>Referral offices</small><b id="referralCount">0</b></div>
+            <div class="metric rose"><small>Similar clinics</small><b id="similarCount">0</b></div>
+            <div class="metric green"><small>With contact info</small><b id="contactCount">0</b></div>
+            <div class="metric blue"><small>Pinned on map</small><b id="pinnedCount">0</b></div>
+          </div>
+          <div class="insight-box compact-status-insight">
+            <p class="eyebrow">Next move</p>
+            <h3 id="bestAreaTitle">Search first</h3>
+            <p id="bestAreaText">Run a search to generate a market brief and action plan.</p>
+          </div>
+          <div class="action-buttons">
+            <button id="routeBtn" type="button" class="soft-btn" disabled>Open route</button>
+            <button id="csvBtn" type="button" class="soft-btn" disabled>Export CSV</button>
+            <button id="reportBtn" type="button" class="soft-btn" disabled>Download report</button>
+            <button id="pdfBtn" type="button" class="soft-btn" disabled>Full PDF report</button>
+          </div>
+        </aside>
+      </section>
+
+      <section class="opportunity-brief glass-card" id="marketOpportunityBrief" aria-live="polite">
+        <div class="section-head compact">
+          <div><p class="eyebrow">Market opportunity brief</p><h2>What this market means</h2></div>
+          <div class="brief-head-actions"><button type="button" id="scoreExplainBtn" class="tiny-btn action-verify">How scores work</button><span class="small-badge blue-badge" id="briefBadge">Search first</span></div>
+        </div>
+        <div id="briefContent" class="brief-content">
+          Search a market to see the best outreach pocket, competitor pressure, network gap, data quality, and recommended next move.
+        </div>
+        <div id="scoreExplainBox" class="score-explain-box" hidden>
+          <b>Scoring is a planning signal, not a revenue or referral prediction.</b>
+          <p><b>Office fit</b> ranks individual offices for practical outreach. The current rule gives points for referral-office match (+30), phone (+16), website (+12), mapped location (+10), stronger public listing, shorter distance, saved status, and selected growth-goal match. High fit means easier to verify/contact; it does not prove the office will refer.</p>
+          <p><b>Action tier</b> turns the same data into a next step: Call this week, Verify first, Save for review, Follow-up due, Protect relationship, Competitor/watch, or Do not pursue. Each office card now shows a short “Why” line so the recommendation is transparent.</p>
+          <p><b>Planning score</b> is the overall market-readiness score. It adds referral-office volume, contactable records, mapped records, and saved targets, then subtracts similar-clinic pressure. A practical target is <b>70+</b>, but only when contact readiness is also strong. It may stay the same after repeated searches when the same public records return and no workflow data changes.</p>
+          <p><b>Market opportunity</b> separates referral-office volume from similar-clinic pressure. <b>Contact readiness</b> shows whether the team can actually call, verify, or visit offices; target <b>75+</b>. <b>Outreach execution</b> shows whether saved offices have owners, touches, and follow-ups; target <b>60–70+</b> once outreach begins.</p>
+          <p><b>Top barriers</b> update from missing phone/website, weak locations, similar clinics, saved-but-not-contacted offices, missing owners, incomplete referral pathway, due follow-ups, and manual barrier tags entered in Manage.</p>
+        </div>
+        <div class="market-figures" id="marketFigures" aria-live="polite">
+          <article class="market-figure-card">
+            <div class="figure-card-head"><span>Office mix</span><b id="dataQualityBadge">Search first</b></div>
+            <div id="officeMixFigure" class="figure-body muted-figure">Run a search to see referral offices, similar clinics, and existing sources.</div>
+          </article>
+          <article class="market-figure-card">
+            <div class="figure-card-head"><span>Outreach funnel</span><b>Live</b></div>
+            <div id="funnelFigure" class="figure-body muted-figure">Save offices to build your active outreach pipeline.</div>
+          </article>
+          <article class="market-figure-card">
+            <div class="figure-card-head"><span>Data quality</span><b>Public data</b></div>
+            <div id="qualityFigure" class="figure-body muted-figure">Shows how many records have contact details and map pins.</div>
+          </article>
+        </div>
+
+      </section>
+
+      <section class="toolbar glass-card compact-toolbar" id="toolBar">
+        <div class="toolbar-group compact-filter-row">
+          <span class="tool-label">Filter</span>
+          <button class="filter-chip strategy-chip" id="noWasteBtn" type="button">No-waste mode</button>
+          <button class="filter-chip active" data-filter="all" type="button">All</button>
+          <button class="filter-chip" data-filter="saved" type="button">Saved</button>
+          <button class="filter-chip" data-filter="due" type="button">Follow-up due</button>
+          <details class="more-filter-menu" id="moreFilterMenu">
+            <summary class="filter-chip more-filter-summary">More filters <span id="activeFilterCount" class="active-filter-count" hidden>0 active</span></summary>
+            <div class="more-filter-panel">
+              <button class="more-filter-close" id="closeMoreFiltersBtn" type="button" aria-label="Close more filters">×</button>
+              <button class="filter-chip" data-filter="high" type="button">High fit</button>
+              <button class="filter-chip" data-filter="phone" type="button">Has phone</button>
+              <button class="filter-chip" data-filter="website" type="button">Has website</button>
+              <button class="filter-chip" data-filter="mapped" type="button">Mapped only</button>
+              <button class="filter-chip" data-filter="dnc" type="button">Do-not-contact</button>
+              <button class="filter-chip" data-filter="verified" type="button">Verified/contactable</button>
+              <button class="filter-chip" data-filter="needsverify" type="button">Needs verification</button>
+              <label class="hide-poor-toggle"><input id="hidePoorToggle" type="checkbox" /> Hide poor-fit</label>
+            </div>
+          </details>
+        </div>
+        <label class="sort-control"><span>Sort</span><select id="sortSelect"><option value="fit">Best fit</option><option value="distance">Distance</option><option value="contact">Contact completeness</option><option value="strength">Listing strength</option><option value="name">Name</option><option value="followup">Follow-up priority</option></select></label>
+      </section>
+
+      <section class="lists-grid">
+        <div class="list-panel glass-card">
+          <div class="section-head compact">
+            <div><p class="eyebrow">Priority list</p><h2>Possible offices to contact</h2></div>
+            <span id="referralListBadge" class="small-badge success">Public listings</span>
+          </div>
+          <div id="referralList" class="empty-list">Search a market to see possible referral offices.</div>
+        </div>
+        <div class="list-panel glass-card">
+          <div class="section-head compact">
+            <div><p class="eyebrow">Market caution</p><h2>Similar clinics nearby</h2></div>
+            <span class="small-badge warn">Review area</span>
+          </div>
+          <div id="similarList" class="empty-list">Similar clinics/competitors appear here so you can understand local competition.</div>
+        </div>
+      </section>
+
+      <section class="saved-selected-grid">
+        <div id="savedSection" class="glass-card saved-section" hidden>
+          <div class="section-head compact"><div><p class="eyebrow">Saved outreach list</p><h2>Targets to follow up</h2></div><span id="savedCountBadge" class="small-badge blue-badge">0 saved</span></div>
+          <div id="savedList" class="card-list"></div>
+        </div>
+        <div id="selectedSection" class="glass-card selected-section" hidden>
+          <div class="section-head compact"><div><p class="eyebrow">Selected office</p><h2 id="selectedTitle">Nothing selected</h2></div><button type="button" id="closeSelected" class="pill-btn">Close</button></div>
+          <div id="selectedDetails" class="selected-details"></div>
+        </div>
+      </section>
+
+      <section class="glass-card pipeline-section" id="pipelineSection">
+        <div class="section-head compact"><div><p class="eyebrow">Referral pipeline</p><h2>Saved office workflow</h2></div><span id="pipelineBadge" class="small-badge blue-badge">0 saved</span></div>
+        <div id="pipelineBoard" class="pipeline-board">Save offices to build a simple pipeline: Not contacted → Contacted → Follow-up → Active.</div>
+      </section>
+
+
+
+      <section class="glass-card campaign-section" id="campaignSection">
+        <div class="section-head compact"><div><p class="eyebrow">Outreach campaigns</p><h2>Focused growth campaigns</h2></div><span id="campaignBadge" class="small-badge blue-badge">0 campaigns</span></div>
+        <div class="campaign-creator">
+          <label class="field"><span>Campaign recipe</span><select id="campaignRecipe"><option value="custom">Custom campaign</option><option value="pcp_back_pain">PCP back-pain referral</option><option value="urgent_spine">Urgent care spine pathway</option><option value="pt_comanagement">PT co-management</option><option value="imaging_coordination">Imaging coordination</option><option value="pain_neuro_review">Pain / neurology review</option></select></label>
+          <label class="field"><span>Campaign name</span><input id="campaignName" type="text" placeholder="e.g., June PT outreach" /></label>
+          <label class="field"><span>Target type</span><select id="campaignType"><option value="pt">Physical therapy</option><option value="primary">Primary care</option><option value="urgent">Urgent care</option><option value="imaging">Imaging</option><option value="specialist">Specialty offices</option><option value="all">All high-fit offices</option></select></label>
+          <label class="field"><span>Owner</span><input id="campaignOwner" type="text" placeholder="Owner / liaison" /></label>
+          <label class="field"><span>Due date</span><input id="campaignDue" type="date" /></label>
+          <button type="button" id="createCampaignBtn" class="soft-btn">Create from next best targets</button>
+        </div>
+        <div id="campaignRecipePreview" class="campaign-recipe-preview"></div>
+        <div id="campaignBoard" class="campaign-board">Create a small campaign to track a focused outreach push without adding another dashboard.</div>
+      </section>
+
+      <section class="growth-grid single-growth-grid">
+        <div class="glass-card agent-card">
+          <div class="section-head compact"><div><p class="eyebrow">Growth assistant</p><h2>Action recommendations</h2></div><span class="small-badge blue-badge">Decision support</span></div>
+          <div class="agent-buttons">
+            <button class="agent-btn" data-agent="weekly" type="button">7-day plan</button>
+            <button class="agent-btn" data-agent="new" type="button">Find new sources</button>
+            <button class="agent-btn" data-agent="best10" type="button">Next best 10</button>
+            <button class="agent-btn" data-agent="visit" type="button">Visit day</button>
+            <button class="agent-btn" data-agent="followups" type="button">Follow-ups due</button>
+            <button class="agent-btn" data-agent="competition" type="button">Competitor moves</button>
+            <button class="agent-btn" data-agent="saved" type="button">Saved summary</button>
+          </div>
+          <div id="agentOutput" class="agent-output">Search a market, save offices, and this panel will generate a practical weekly outreach plan.</div>
+        </div>
+      </section>
+
+
+
+      <section class="enterprise-grid team-manager-grid">
+        <div class="glass-card team-card compact-team" id="teamWorkspaceSection">
+          <div class="section-head compact"><div><p class="eyebrow">Team workspace</p><h2>Team assignments + shared workspace</h2></div><span id="cloudSyncBadge" class="small-badge blue-badge">Local</span></div>
+          <div class="team-workflow-grid">
+            <div class="team-add-box">
+              <label class="field"><span>Add liaison / owner</span><input id="teamMemberInput" placeholder="e.g., Sarah — physician liaison" /></label>
+              <button type="button" id="addTeamMemberBtn" class="soft-btn">Add team member</button>
+            </div>
+            <div class="team-share-box compact-workspace-tools">
+              <details class="workspace-tools-details">
+                <summary>Workspace tools</summary>
+                <p class="helper-text no-margin">Use only when you need cloud sync, backup, or local sharing.</p>
+                <div class="team-actions compact-actions">
+                  <button type="button" id="cloudSaveBtn" class="soft-btn">Sync cloud</button>
+                  <button type="button" id="cloudLoadBtn" class="soft-btn">Load cloud</button>
+                  <button type="button" id="exportWorkspaceBtn" class="soft-btn">Export</button>
+                  <label class="soft-btn file-like">Import<input id="importWorkspaceInput" type="file" accept="application/json,.json" hidden /></label>
+                </div>
+              </details>
+            </div>
+          </div>
+          <div id="teamList" class="team-list polished-team-list"></div>
+        </div>
+        <div class="glass-card manager-card" id="managerDashboardSection">
+          <div class="section-head compact"><div><p class="eyebrow">Manager dashboard</p><h2>Outreach activity</h2></div><span class="small-badge success">Live local metrics</span></div>
+          <div id="managerDashboard" class="manager-dashboard">Search, save, assign, and update offices to see team progress here.</div>
+        </div>
+      </section>
+
+      <section class="glass-card activity-section" id="activityHistorySection">
+        <div class="section-head compact"><div><p class="eyebrow">Activity history</p><h2>Recent outreach actions</h2></div><span id="activityCountBadge" class="small-badge neutral">0 actions</span></div>
+        <div id="activityHistoryList" class="activity-list">No activity yet. Save offices, assign owners, change status, or add follow-ups to build the history.</div>
+      </section>
+
+      <section class="enterprise-grid reminder-only-grid">
+        <div class="glass-card reminder-card">
+          <div class="section-head compact"><div><p class="eyebrow">Reminder center</p><h2>Email + calendar follow-ups</h2></div><span class="small-badge blue-badge">Repeat use</span></div>
+          <div class="reminder-actions">
+            <button type="button" id="emailReminderBtn" class="soft-btn">Email my follow-up list</button>
+            <button type="button" id="calendarBtn" class="soft-btn">Download calendar reminders</button>
+          </div>
+          <div class="weekly-box">
+            <h3>Weekly report schedule</h3>
+            <p class="helper-text">Use this to prepare follow-up emails and calendar files. Fully automatic weekly delivery requires a connected email provider and scheduled server job.</p>
+            <div class="weekly-grid">
+              <label class="field"><span>Send day</span><select id="weeklyDay"><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option></select></label>
+              <label class="field"><span>Time</span><input id="weeklyTime" type="time" value="08:00" /></label>
+              <button type="button" id="saveWeeklyBtn" class="soft-btn">Save weekly plan</button>
+            </div>
+            <div id="weeklyStatus" class="helper-text"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="enterprise-grid network-grid">
+        <div class="glass-card existing-card" id="existingNetworkSection">
+          <div class="section-head compact"><div><p class="eyebrow">Existing referral network</p><h2>Upload and map current referral sources</h2></div><span class="small-badge success">Green map layer</span></div>
+          <p class="helper-text">Add current referral sources one at a time or upload a CSV. Existing relationships appear as green pins and are included in reports, coverage gaps, and pipeline tracking.</p>
+          <details class="manual-existing-box" open>
+            <summary>+ Add existing referral source manually</summary>
+            <div class="manual-existing-grid">
+              <label class="field"><span>Office name</span><input id="manualExistingName" type="text" placeholder="e.g., Austin Family Medicine" /></label>
+              <label class="field"><span>Type / specialty</span><input id="manualExistingType" type="text" placeholder="Primary care, PT, imaging..." /></label>
+              <label class="field wide"><span>Address</span><input id="manualExistingAddress" type="text" placeholder="Street, city, state, ZIP" /></label>
+              <label class="field"><span>Phone</span><input id="manualExistingPhone" type="text" placeholder="Phone" /></label>
+              <label class="field"><span>Website</span><input id="manualExistingWebsite" type="text" placeholder="Website" /></label>
+              <label class="field"><span>Referral coordinator</span><input id="manualExistingContact" type="text" placeholder="Contact person" /></label>
+              <label class="field"><span>Fax / portal / email</span><input id="manualExistingFax" type="text" placeholder="Fax, portal, referral email" /></label>
+              <label class="field"><span>Status</span><select id="manualExistingStatus"><option>Relationship active</option><option>Follow-up needed</option><option>Sent information</option><option>Called</option><option>Not contacted</option></select></label>
+              <label class="field wide"><span>Notes</span><textarea id="manualExistingNotes" placeholder="What they send, preferred contact method, payer notes, next step..."></textarea></label>
+            </div>
+            <div class="manual-existing-actions">
+              <button type="button" id="saveManualExistingBtn" class="soft-btn">Save and map source</button>
+              <button type="button" id="clearManualExistingBtn" class="tiny-btn action-manage">Clear form</button>
+            </div>
+          </details>
+          <div class="csv-upload-box">
+            <label class="field"><span>Bulk upload existing sources CSV</span><input id="existingReferralInput" type="file" accept=".csv,text/csv" /></label>
+          </div>
+          <div class="existing-actions">
+            <button type="button" id="clearExistingBtn" class="soft-btn">Clear existing network</button>
+            <button type="button" id="exportExistingBtn" class="soft-btn">Export existing network</button>
+          </div>
+          <div id="existingUploadStatus" class="helper-text">No existing referral-source CSV uploaded yet.</div>
+          <div id="existingNetworkList" class="compact-network-list"></div>
+        </div>
+        <div class="glass-card network-insight-card" id="networkCoverageCard">
+          <div class="section-head compact"><div><p class="eyebrow">Network coverage</p><h2>Coverage gaps</h2></div><span class="small-badge success">Map layer</span></div>
+          <div id="networkCoverageContent" class="coverage-dynamic">Search a market or upload existing referral sources to see coverage gaps by direction.</div>
+        </div>
+      </section>
+
+      <section class="enterprise-grid">
+        <div class="glass-card upload-card">
+          <div class="section-head compact"><div><p class="eyebrow">Clinic data upload</p><h2>Referral performance analytics</h2></div><span class="small-badge success">Optional</span></div>
+          <p class="helper-text">Upload a referral-source CSV to compare referred leads, scheduled/converted patients, possible leakage, and estimated value. This stays in the browser.</p>
+          <input id="referralCsvInput" type="file" accept=".csv,text/csv" />
+          <div class="analytics-controls">
+            <label class="field"><span>Value per converted referral</span><input id="avgValueInput" type="number" min="0" value="1500" /></label>
+            <label class="field"><span>Monthly outreach cost</span><input id="outreachCostInput" type="number" min="0" value="500" /></label>
+            <label class="field"><span>Projected converted referrals/month</span><input id="projectedConvertedInput" type="number" min="0" value="2" /></label>
+          </div>
+          <div id="csvUploadStatus" class="helper-text">No clinic CSV uploaded yet.</div>
+        </div>
+
+        <div class="glass-card analytics-card">
+          <div class="section-head compact"><div><p class="eyebrow">Enterprise analytics</p><h2>Referral leakage + ROI tracker</h2></div><span class="small-badge warn">Best with clinic data</span></div>
+          <div id="enterpriseAnalytics" class="analytics-grid">
+            <div class="agent-item"><b>Upload CSV</b><p>Default ROI projection appears here. Upload CSV for actual leakage and ROI.</p></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div id="loginModal" class="modal-backdrop" hidden>
+    <div class="login-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+      <div class="section-head compact"><div><p class="eyebrow">Workspace login</p><h2 id="loginTitle">Sign in / save profile</h2></div><button type="button" id="closeLoginBtn" class="pill-btn">Close</button></div>
+      <p class="helper-text">Sign in with Google or save a local profile for reports and reminders.</p>
+      <div id="cloudAuthStatus" class="cloud-auth-status">Checking cloud configuration...</div>
+      <div class="cloud-login-actions">
+        <button type="button" id="googleSignInBtn" class="soft-btn">Sign in with Google</button>
+        <button type="button" id="cloudSignOutBtn" class="soft-btn">Sign out</button>
+      </div>
+      <div id="accountDisplay" class="account-display"></div>
+      <div class="account-form modal-account-form">
+        <input id="accountName" placeholder="Your name or clinic" />
+        <input id="accountEmail" placeholder="Email for reminders" />
+        <button type="button" id="saveAccountBtn" class="soft-btn">Save local workspace</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="app.js"></script>
+</body>
+</html>
